@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RowZone</title>
+<meta name="description" content="Live heart rate zones from a Concept2 PM5 or Bluetooth heart rate strap.">
+<meta name="theme-color" content="#141413">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 28S3 20 3 11a6.5 6.5 0 0 1 13-1 6.5 6.5 0 0 1 13 1c0 9-13 17-13 17z' fill='%233987e5'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #141413;
+  --surface: #1a1a19;
+  --surface-2: #232322;
+  --border: #31312f;
+  --text: #f0efec;
+  --text-2: #c3c2b7;
+  --text-3: #8e8d86;
+  --grid: #2c2c2a;
+  --accent: #3987e5;
+  --band: rgba(57, 135, 229, 0.16);
+  --band-edge: rgba(57, 135, 229, 0.55);
+  --line: #f0efec;
+  /* ordinal ramp: low zone = dim, high zone = bright (dark surface) */
+  --z1: #184f95; --z2: #256abf; --z3: #3987e5; --z4: #6da7ec; --z5: #9ec5f4;
+  --warn: #e9a23b;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #f4f3f0; --surface: #fcfcfb; --surface-2: #f0efec; --border: #dddcd6;
+    --text: #0b0b0b; --text-2: #52514e; --text-3: #7a7974; --grid: #e7e6e1;
+    --accent: #2a78d6; --band: rgba(42, 120, 214, 0.13); --band-edge: rgba(42, 120, 214, 0.5);
+    --line: #0b0b0b;
+    --z1: #86b6ef; --z2: #5598e7; --z3: #2a78d6; --z4: #1c5cab; --z5: #104281;
+    --warn: #b86e00;
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f3f0; --surface: #fcfcfb; --surface-2: #f0efec; --border: #dddcd6;
+  --text: #0b0b0b; --text-2: #52514e; --text-3: #7a7974; --grid: #e7e6e1;
+  --accent: #2a78d6; --band: rgba(42, 120, 214, 0.13); --band-edge: rgba(42, 120, 214, 0.5);
+  --line: #0b0b0b;
+  --z1: #86b6ef; --z2: #5598e7; --z3: #2a78d6; --z4: #1c5cab; --z5: #104281;
+  --warn: #b86e00;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+h1 svg { width: 22px; height: 22px; }
+.spacer { flex: 1; }
+button, select, input {
+  font: inherit; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px;
+}
+button { cursor: pointer; white-space: nowrap; }
+button:hover { border-color: var(--text-3); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.status { font-size: 13px; color: var(--text-2); display: flex; gap: 12px; flex-wrap: wrap; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); margin-right: 6px; vertical-align: 1px; }
+.dot.on { background: #3fb950; }
+.banner { background: var(--surface); border: 1px solid var(--warn); color: var(--text); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px; font-size: 14px; }
+.banner b { color: var(--warn); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.tiles { display: grid; grid-template-columns: 1.4fr repeat(5, 1fr); gap: 10px; margin-bottom: 12px; }
+.tile .label { font-size: 12px; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; }
+.tile .value { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-top: 2px; }
+.tile .sub { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.hero .value { font-size: 56px; line-height: 1; display: flex; align-items: baseline; gap: 10px; }
+.hero .value small { font-size: 16px; color: var(--text-2); font-weight: 500; }
+.zone-pill { display: inline-block; white-space: nowrap; font-size: 13px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text); }
+.zone-pill.in { border-color: var(--accent); color: var(--accent); }
+.zone-pill.hi, .zone-pill.lo { border-color: var(--warn); color: var(--warn); }
+.grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.card h2 { font-size: 15px; margin: 0; font-weight: 600; }
+.card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.card-head .hint { font-size: 13px; color: var(--text-2); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 13px; background: transparent; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); box-shadow: none; color: var(--text); font-weight: 600; }
+.chart-box { position: relative; height: 340px; }
+canvas { display: block; width: 100%; height: 100%; }
+.tip {
+  position: absolute; pointer-events: none; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 9px; font-size: 13px; font-variant-numeric: tabular-nums;
+  white-space: nowrap; display: none; box-shadow: 0 4px 14px rgba(0,0,0,.25); z-index: 2;
+}
+.tip b { font-weight: 650; }
+.empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 14px; text-align: center; padding: 20px; }
+.bars { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.bar-row { display: grid; grid-template-columns: 74px 1fr 92px; gap: 10px; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.bar-row .zl { color: var(--text-2); line-height: 1.2; }
+.bar-row .zl b { color: var(--text); font-size: 14px; }
+.bar-row.target .zl b::after { content: " ◎"; color: var(--accent); }
+.bar-track { height: 26px; background: var(--surface-2); border-radius: 4px; position: relative; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 0 4px 4px 0; min-width: 0; transition: width .4s ease; }
+.bar-row.target .bar-track { box-shadow: inset 0 0 0 2px var(--accent); }
+.bar-row .tv { text-align: right; }
+.bar-row .tv span { color: var(--text-2); display: block; font-size: 12px; }
+.summary { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 14px; color: var(--text-2); }
+.summary b { color: var(--text); font-size: 22px; font-variant-numeric: tabular-nums; }
+details.settings { margin-top: 12px; }
+details.settings summary { cursor: pointer; font-weight: 600; list-style: none; }
+details.settings summary::-webkit-details-marker { display: none; }
+details.settings summary::before { content: "▸ "; color: var(--text-3); }
+details.settings[open] summary::before { content: "▾ "; }
+.zone-edit { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.zone-edit label { font-size: 13px; color: var(--text-2); display: flex; flex-direction: column; gap: 4px; }
+.zone-edit input { width: 100%; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--text-2); }
+.row input[type=number] { width: 90px; }
+footer { color: var(--text-3); font-size: 13px; margin: 18px 0 8px; }
+footer a { color: var(--text-2); }
+table.sr { position: absolute; left: -9999px; }
+@media (max-width: 900px) {
+  .tiles { grid-template-columns: repeat(3, 1fr); }
+  .hero { grid-column: 1 / -1; }
+  .grid2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .tile .value { font-size: 22px; }
+  .hero .value { font-size: 44px; }
+  .chart-box { height: 260px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28S3 20 3 11a6.5 6.5 0 0 1 13-1 6.5 6.5 0 0 1 13 1c0 9-13 17-13 17z" fill="var(--accent)"/></svg>RowZone</h1>
+    <div class="status" id="status">
+      <span><i class="dot" id="pmDot"></i><span id="pmText">PM5 not connected</span></span>
+      <span><i class="dot" id="hrDot"></i><span id="hrText">HR strap not connected</span></span>
+    </div>
+    <div class="spacer"></div>
+    <div class="toolbar">
+      <button class="primary" id="btnPm">Connect PM5</button>
+      <button id="btnHr">Connect HR strap</button>
+      <button id="btnDemo" aria-pressed="false">Demo</button>
+      <button id="btnPause" aria-pressed="false">Pause</button>
+      <button id="btnReset">Reset</button>
+      <button id="btnCsv">Export CSV</button>
+    </div>
+  </header>
+
+  <div class="banner" id="noBt" hidden>
+    <b>Bluetooth isn't available in this browser.</b>
+    Open this page in Chrome or Edge on Windows, Mac, Android or ChromeOS. On iPhone or iPad, use the free <i>Bluefy</i> browser app.
+    You can still try the Demo.
+  </div>
+
+  <section class="tiles">
+    <div class="card tile hero">
+      <div class="label">Heart rate</div>
+      <div class="value"><span id="vHr">--</span><small>bpm</small> <span class="zone-pill" id="vZone">—</span></div>
+      <div class="sub" id="vZoneMsg">Target: Zone 2</div>
+    </div>
+    <div class="card tile"><div class="label">Elapsed</div><div class="value" id="vTime">0:00</div><div class="sub" id="vSrc">&nbsp;</div></div>
+    <div class="card tile"><div class="label">In target</div><div class="value" id="vInPct">0%</div><div class="sub" id="vInTime">0:00</div></div>
+    <div class="card tile"><div class="label">Avg HR</div><div class="value" id="vAvg">--</div><div class="sub" id="vMax">max --</div></div>
+    <div class="card tile"><div class="label">Pace /500m</div><div class="value" id="vPace">--</div><div class="sub" id="vSpm">-- spm</div></div>
+    <div class="card tile"><div class="label">Distance</div><div class="value" id="vDist">--</div><div class="sub">metres</div></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <div class="card-head">
+        <h2>Heart rate</h2>
+        <span class="hint" id="bandHint">Shaded band = target zone</span>
+        <div class="spacer"></div>
+        <div class="seg" role="group" aria-label="Time window">
+          <button data-win="300" aria-pressed="false">5 min</button>
+          <button data-win="900" aria-pressed="false">15 min</button>
+          <button data-win="0" aria-pressed="true">All</button>
+        </div>
+      </div>
+      <div class="chart-box" id="lineBox">
+        <canvas id="line" role="img" aria-label="Heart rate over time with target zone band"></canvas>
+        <div class="tip" id="tip"></div>
+        <div class="empty" id="lineEmpty">Connect your PM5 or heart rate strap, or press Demo, to start.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h2>Time in zone</h2>
+        <div class="spacer"></div>
+        <label class="row">Target
+          <select id="targetSel" aria-label="Target zone">
+            <option value="0">Zone 1</option><option value="1" selected>Zone 2</option>
+            <option value="2">Zone 3</option><option value="3">Zone 4</option><option value="4">Zone 5</option>
+          </select>
+        </label>
+      </div>
+      <div class="bars" id="bars"></div>
+      <div class="summary"><b id="sumPct">0%</b> of this session in your target zone</div>
+    </div>
+  </section>
+
+  <details class="card settings" id="settings">
+    <summary>Heart rate zones</summary>
+    <p class="row" style="margin-top:10px">Each zone starts at the bpm shown and runs up to the next zone's start. Saved in this browser.</p>
+    <div class="zone-edit" id="zoneEdit"></div>
+    <div class="row">
+      Max HR <input type="number" id="maxHr" min="100" max="230">
+      <button id="btnFromMax">Set zones from max HR (50/60/70/80/90%)</button>
+      <button id="btnGarmin">Reset to my Garmin zones</button>
+    </div>
+  </details>
+
+  <table class="sr" id="srTable"><caption>Time in each heart rate zone</caption><thead><tr><th>Zone</th><th>Range</th><th>Time</th><th>Share</th></tr></thead><tbody></tbody></table>
+
+  <footer>
+    Works with a Concept2 PM5 over Bluetooth (heart rate comes through if your strap is paired to the monitor) or any standard Bluetooth heart rate strap. Connect both for pace and distance plus strap HR.
+    Data stays in your browser. <a href="https://github.com/OllieKnights21/rowzone">Source</a>
+  </footer>
+</div>
+
+<script>
+"use strict";
+// ---------- Config ----------
+const GARMIN_DEFAULT = { floors: [95, 113, 132, 151, 170], max: 189 }; // from Garmin Connect DEFAULT profile
+const C2_DISCOVERY = "ce060000-43e5-11e4-916c-0800200c9a66";
+const C2_ROWING    = "ce060030-43e5-11e4-916c-0800200c9a66";
+const C2_GENERAL   = "ce060031-43e5-11e4-916c-0800200c9a66";
+const C2_ADDL1     = "ce060032-43e5-11e4-916c-0800200c9a66";
+const C2_INFO      = "ce060010-43e5-11e4-916c-0800200c9a66";
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("rowzone." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("rowzone." + k, JSON.stringify(v)); } catch {} }
+};
+
+let zones = store.get("zones", GARMIN_DEFAULT);
+let target = store.get("target", 1);
+let win = 0;
+
+// ---------- Session state ----------
+const S = {
+  samples: [],          // {t, hr, pace, spm, dist}
+  zoneSecs: [0, 0, 0, 0, 0, 0], // index 0..4 = Z1..Z5, 5 = below Z1
+  elapsed: 0,           // seconds of recorded time
+  lastTick: null,
+  paused: false,
+  hrStrap: null, hrPm: null, hrStrapAt: 0, hrPmAt: 0,
+  pace: null, spm: null, dist: null,
+};
+
+function zoneOf(hr) {
+  if (hr == null) return null;
+  for (let i = 4; i >= 0; i--) if (hr >= zones.floors[i]) return i;
+  return 5; // below zone 1
+}
+function zoneRange(i) {
+  const lo = zones.floors[i];
+  const hi = i < 4 ? zones.floors[i + 1] - 1 : zones.max;
+  return [lo, hi];
+}
+function currentHr(now) {
+  if (S.hrStrap != null && now - S.hrStrapAt < 5000) return S.hrStrap;
+  if (S.hrPm != null && now - S.hrPmAt < 5000) return S.hrPm;
+  return null;
+}
+const fmt = s => {
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`;
+};
+const fmtPace = p => p == null || !isFinite(p) || p <= 0 || p > 600 ? "--" : `${Math.floor(p / 60)}:${(p % 60).toFixed(1).padStart(4, "0")}`;
+
+// ---------- Recording loop: 1 sample per second ----------
+let demo = null;
+function tick() {
+  const now = Date.now();
+  const dt = S.lastTick == null ? 0 : Math.min((now - S.lastTick) / 1000, 3) * (demo ? demo.speed : 1);
+  S.lastTick = now;
+  if (demo) demo.step(dt);
+  const hr = currentHr(now);
+  if (!S.paused && hr != null) {
+    S.elapsed += dt;
+    const z = zoneOf(hr);
+    S.zoneSecs[z] += dt;
+    S.samples.push({ t: S.elapsed, hr, pace: S.pace, spm: S.spm, dist: S.dist });
+  }
+  render(hr);
+}
+setInterval(tick, 1000);
+
+// ---------- Bluetooth: Concept2 PM5 ----------
+const hasBt = !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
+if (!hasBt) document.getElementById("noBt").hidden = false;
+
+async function connectPm() {
+  try {
+    const dev = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [C2_DISCOVERY] }, { namePrefix: "PM5" }],
+      optionalServices: [C2_ROWING, C2_INFO, C2_DISCOVERY],
+    });
+    setPm(false, "Connecting to " + (dev.name || "PM5") + "…");
+    dev.addEventListener("gattserverdisconnected", () => setPm(false, "PM5 disconnected"));
+    const gatt = await dev.gatt.connect();
+    const svc = await gatt.getPrimaryService(C2_ROWING);
+    const gen = await svc.getCharacteristic(C2_GENERAL);
+    const add = await svc.getCharacteristic(C2_ADDL1);
+    gen.addEventListener("characteristicvaluechanged", e => {
+      const v = e.target.value;
+      S.dist = (v.getUint8(3) | (v.getUint8(4) << 8) | (v.getUint8(5) << 16)) / 10;
+    });
+    add.addEventListener("characteristicvaluechanged", e => {
+      const v = e.target.value;
+      S.spm = v.getUint8(5) || null;
+      const hr = v.getUint8(6);
+      if (hr > 0 && hr < 255) { S.hrPm = hr; S.hrPmAt = Date.now(); }
+      const pace = (v.getUint8(7) | (v.getUint8(8) << 8)) / 100;
+      S.pace = pace > 0 ? pace : null;
+    });
+    await gen.startNotifications();
+    await add.startNotifications();
+    setPm(true, (dev.name || "PM5") + " connected");
+  } catch (err) {
+    if (err && err.name === "NotFoundError") return; // user cancelled the picker
+    setPm(false, "PM5: " + (err && err.message || err));
+  }
+}
+
+// ---------- Bluetooth: standard heart rate strap ----------
+async function connectHr() {
+  try {
+    const dev = await navigator.bluetooth.requestDevice({ filters: [{ services: ["heart_rate"] }] });
+    setHrs(false, "Connecting to " + (dev.name || "strap") + "…");
+    dev.addEventListener("gattserverdisconnected", () => setHrs(false, "HR strap disconnected"));
+    const gatt = await dev.gatt.connect();
+    const svc = await gatt.getPrimaryService("heart_rate");
+    const ch = await svc.getCharacteristic("heart_rate_measurement");
+    ch.addEventListener("characteristicvaluechanged", e => {
+      const v = e.target.value;
+      const hr = v.getUint8(0) & 1 ? v.getUint16(1, true) : v.getUint8(1);
+      if (hr > 0) { S.hrStrap = hr; S.hrStrapAt = Date.now(); }
+    });
+    await ch.startNotifications();
+    setHrs(true, (dev.name || "HR strap") + " connected");
+  } catch (err) {
+    if (err && err.name === "NotFoundError") return;
+    setHrs(false, "HR strap: " + (err && err.message || err));
+  }
+}
+function setPm(on, t) { $("pmDot").classList.toggle("on", on); $("pmText").textContent = t; if (on) requestWake(); }
+function setHrs(on, t) { $("hrDot").classList.toggle("on", on); $("hrText").textContent = t; if (on) requestWake(); }
+
+let wake = null;
+async function requestWake() {
+  try { if ("wakeLock" in navigator && !wake) { wake = await navigator.wakeLock.request("screen"); wake.addEventListener("release", () => wake = null); } } catch {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && ($("pmDot").classList.contains("on") || $("hrDot").classList.contains("on"))) requestWake(); });
+
+// ---------- Demo: simulated steady-state session at 10x speed ----------
+function startDemo() {
+  let t = 0, hr = 78, dist = 0;
+  demo = {
+    speed: 10,
+    step(dt) {
+      t += dt;
+      // warm up, long zone 2 block with drift, a short surge, cool down
+      let goal = t < 240 ? 78 + (t / 240) * 40 : t < 1500 ? 121 + (t - 240) / 180 : t < 1620 ? 148 : t < 2100 ? 124 : 100;
+      hr += (goal - hr) * Math.min(1, dt * 0.06) + (Math.random() - 0.5) * 1.6;
+      const pace = t < 240 ? 150 : t < 1500 ? 132 : t < 1620 ? 112 : t < 2100 ? 134 : 160;
+      dist += dt * 500 / pace;
+      S.hrStrap = Math.round(hr); S.hrStrapAt = Date.now();
+      S.pace = pace + (Math.random() - 0.5) * 2; S.spm = t < 1500 ? 20 : t < 1620 ? 28 : 20; S.dist = dist;
+    }
+  };
+  $("btnDemo").setAttribute("aria-pressed", "true");
+  setHrs(true, "Demo (10× speed)");
+}
+function stopDemo() {
+  demo = null; S.hrStrap = null;
+  $("btnDemo").setAttribute("aria-pressed", "false");
+  setHrs(false, "HR strap not connected");
+}
+
+// ---------- Rendering ----------
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function render(hr) {
+  $("vHr").textContent = hr ?? "--";
+  const z = zoneOf(hr);
+  const pill = $("vZone");
+  if (z == null) { pill.textContent = "—"; pill.className = "zone-pill"; $("vZoneMsg").textContent = `Target: Zone ${target + 1} (${zoneRange(target).join("–")} bpm)`; }
+  else {
+    pill.textContent = z === 5 ? "Below Z1" : `Zone ${z + 1}`;
+    const [lo, hi] = zoneRange(target);
+    let cls = "in", msg = `In target zone ${target + 1}`;
+    if (hr < lo) { cls = "lo"; msg = `${lo - hr} bpm below target · speed up`; }
+    else if (hr > hi) { cls = "hi"; msg = `${hr - hi} bpm above target · ease off`; }
+    pill.className = "zone-pill " + cls;
+    $("vZoneMsg").textContent = msg;
+  }
+  $("vTime").textContent = fmt(S.elapsed);
+  $("vSrc").textContent = S.paused ? "Paused" : (S.hrStrap != null && Date.now() - S.hrStrapAt < 5000 ? "HR from strap" : S.hrPm != null ? "HR from PM5" : " ");
+  const inT = S.zoneSecs[target];
+  const pct = S.elapsed ? Math.round(100 * inT / S.elapsed) : 0;
+  $("vInPct").textContent = pct + "%"; $("vInTime").textContent = fmt(inT); $("sumPct").textContent = pct + "%";
+  if (S.samples.length) {
+    let sum = 0, mx = 0; for (const s of S.samples) { sum += s.hr; if (s.hr > mx) mx = s.hr; }
+    $("vAvg").textContent = Math.round(sum / S.samples.length); $("vMax").textContent = "max " + mx;
+  } else { $("vAvg").textContent = "--"; $("vMax").textContent = "max --"; }
+  $("vPace").textContent = fmtPace(S.pace); $("vSpm").textContent = (S.spm ?? "--") + " spm";
+  $("vDist").textContent = S.dist != null ? Math.round(S.dist).toLocaleString() : "--";
+  renderBars();
+  drawLine();
+}
+
+function renderBars() {
+  const tot = S.elapsed || 0;
+  const maxSecs = Math.max(1, ...S.zoneSecs.slice(0, 5));
+  const box = $("bars"), body = $("srTable").tBodies[0];
+  if (box.children.length !== 5) {
+    box.innerHTML = ""; for (let i = 4; i >= 0; i--) {
+      const r = document.createElement("div"); r.className = "bar-row"; r.dataset.z = i;
+      r.innerHTML = `<div class="zl"><b>Z${i + 1}</b><br><span></span></div><div class="bar-track"><div class="bar-fill" style="background:var(--z${i + 1})"></div></div><div class="tv"></div>`;
+      box.appendChild(r);
+    }
+  }
+  body.innerHTML = "";
+  for (const r of box.children) {
+    const i = +r.dataset.z, secs = S.zoneSecs[i], [lo, hi] = zoneRange(i);
+    r.classList.toggle("target", i === target);
+    r.querySelector(".zl span").textContent = `${lo}–${hi}`;
+    r.querySelector(".bar-fill").style.width = (100 * secs / maxSecs) + "%";
+    const share = tot ? Math.round(100 * secs / tot) : 0;
+    r.querySelector(".tv").innerHTML = `${fmt(secs)}<span>${share}%</span>`;
+    r.title = `Zone ${i + 1} (${lo}–${hi} bpm): ${fmt(secs)}, ${share}% of session`;
+    body.insertAdjacentHTML("beforeend", `<tr><td>Zone ${i + 1}</td><td>${lo}–${hi}</td><td>${fmt(secs)}</td><td>${share}%</td></tr>`);
+  }
+}
+
+// Line chart (canvas)
+const cv = $("line"), ctx = cv.getContext("2d");
+let geom = null, hoverX = null;
+function drawLine() {
+  const box = $("lineBox"), dpr = window.devicePixelRatio || 1;
+  const W = box.clientWidth, H = box.clientHeight;
+  if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  $("lineEmpty").style.display = S.samples.length ? "none" : "flex";
+
+  const all = S.samples;
+  const tEnd = all.length ? all[all.length - 1].t : 0;
+  const tStart = win && tEnd > win ? tEnd - win : 0;
+  const span = Math.max(win || 60, tEnd - tStart, 60);
+  const pts = win ? all.filter(s => s.t >= tStart) : all;
+  const step = Math.max(1, Math.floor(pts.length / (W * 1.5))); // decimate for long sessions
+
+  const [tLo, tHi] = zoneRange(target);
+  let yMin = Math.min(tLo - 15, zones.floors[0]), yMax = Math.max(tHi + 15, zones.floors[2]);
+  for (const s of pts) { if (s.hr < yMin) yMin = s.hr - 5; if (s.hr > yMax) yMax = s.hr + 5; }
+  yMin = Math.floor(yMin / 10) * 10; yMax = Math.ceil(yMax / 10) * 10;
+
+  const L = 40, R = 52, T = 10, B = 26, pw = W - L - R, ph = H - T - B;
+  const X = t => L + ((t - tStart) / span) * pw;
+  const Y = v => T + (1 - (v - yMin) / (yMax - yMin)) * ph;
+  geom = { X, Y, L, R, T, B, pw, ph, tStart, span, pts };
+
+  ctx.font = "12px system-ui, sans-serif";
+  // zone boundary gridlines + right-side zone labels
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const [lo, hi] = zoneRange(i);
+    const a = Math.max(lo, yMin), b = Math.min(hi + 1, yMax);
+    if (b <= a) continue;
+    if (lo > yMin && lo < yMax) {
+      ctx.strokeStyle = css("--grid"); ctx.beginPath(); ctx.moveTo(L, Math.round(Y(lo)) + .5); ctx.lineTo(L + pw, Math.round(Y(lo)) + .5); ctx.stroke();
+    }
+    ctx.fillStyle = i === target ? css("--accent") : css("--text-3");
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.font = (i === target ? "600 " : "") + "12px system-ui, sans-serif";
+    ctx.fillText("Z" + (i + 1), L + pw + 8, (Y(a) + Y(b)) / 2);
+  }
+  ctx.font = "12px system-ui, sans-serif";
+  // target band
+  const by1 = Y(Math.min(tHi + 1, yMax)), by2 = Y(Math.max(tLo, yMin));
+  ctx.fillStyle = css("--band"); ctx.fillRect(L, by1, pw, by2 - by1);
+  ctx.strokeStyle = css("--band-edge"); ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(L, by1); ctx.lineTo(L + pw, by1); ctx.moveTo(L, by2); ctx.lineTo(L + pw, by2); ctx.stroke();
+  ctx.setLineDash([]);
+  // y axis labels
+  ctx.fillStyle = css("--text-2"); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  const yStep = (yMax - yMin) > 80 ? 20 : 10;
+  for (let v = yMin; v <= yMax; v += yStep) ctx.fillText(v, L - 8, Y(v));
+  // x axis labels
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const maxTicks = pw < 360 ? 4 : 7;
+  const xStep = [30, 60, 120, 300, 600, 900, 1800].find(s => span / s <= maxTicks) || 3600;
+  for (let t = Math.ceil(tStart / xStep) * xStep; t <= tStart + span; t += xStep) ctx.fillText(fmt(t), X(t), T + ph + 8);
+  // baseline
+  ctx.strokeStyle = css("--border"); ctx.beginPath(); ctx.moveTo(L, T + ph + .5); ctx.lineTo(L + pw, T + ph + .5); ctx.stroke();
+
+  if (!pts.length) return;
+  // HR line
+  ctx.save(); ctx.beginPath(); ctx.rect(L, T, pw, ph); ctx.clip();
+  ctx.strokeStyle = css("--line"); ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.beginPath();
+  let prev = null;
+  for (let i = 0; i < pts.length; i += step) {
+    const s = pts[i];
+    if (prev && s.t - prev.t > 10) ctx.moveTo(X(s.t), Y(s.hr)); else ctx.lineTo(X(s.t), Y(s.hr));
+    prev = s;
+  }
+  const last = pts[pts.length - 1];
+  ctx.lineTo(X(last.t), Y(last.hr));
+  ctx.stroke();
+  ctx.restore();
+  // live end marker
+  ctx.fillStyle = css("--line"); ctx.strokeStyle = css("--surface"); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(X(last.t), Y(last.hr), 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+  // hover crosshair
+  if (hoverX != null) {
+    const t = tStart + ((hoverX - L) / pw) * span;
+    let best = null, bd = Infinity;
+    for (const s of pts) { const d = Math.abs(s.t - t); if (d < bd) { bd = d; best = s; } }
+    if (best) {
+      const x = X(best.t), y = Y(best.hr);
+      ctx.strokeStyle = css("--text-3"); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(Math.round(x) + .5, T); ctx.lineTo(Math.round(x) + .5, T + ph); ctx.stroke();
+      ctx.fillStyle = css("--line"); ctx.strokeStyle = css("--surface"); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      const tip = $("tip"); const z = zoneOf(best.hr);
+      tip.innerHTML = `<b>${best.hr} bpm</b> · ${z === 5 ? "below Z1" : "Zone " + (z + 1)}<br>${fmt(best.t)}${best.pace ? " · " + fmtPace(best.pace) + "/500m" : ""}`;
+      tip.style.display = "block";
+      const tw = tip.offsetWidth;
+      tip.style.left = Math.max(0, x + 12 + tw > W ? x - tw - 12 : x + 12) + "px";
+      tip.style.top = Math.max(0, y - 46) + "px";
+    }
+  } else $("tip").style.display = "none";
+}
+cv.addEventListener("pointermove", e => { const r = cv.getBoundingClientRect(); const x = e.clientX - r.left; hoverX = geom && x >= geom.L && x <= geom.L + geom.pw ? x : null; drawLine(); });
+cv.addEventListener("pointerleave", () => { hoverX = null; drawLine(); });
+window.addEventListener("resize", () => drawLine());
+if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => render(currentHr(Date.now())));
+
+// ---------- Zone settings ----------
+function buildZoneEditor() {
+  const ed = $("zoneEdit"); ed.innerHTML = "";
+  zones.floors.forEach((f, i) => {
+    const l = document.createElement("label");
+    l.innerHTML = `Zone ${i + 1} starts at (bpm)<input type="number" min="40" max="230" value="${f}" data-i="${i}">`;
+    ed.appendChild(l);
+  });
+  $("maxHr").value = zones.max;
+}
+$("zoneEdit").addEventListener("change", e => {
+  const i = +e.target.dataset.i, v = +e.target.value;
+  if (!v) return;
+  const f = zones.floors.slice(); f[i] = v;
+  for (let k = 1; k < 5; k++) if (f[k] <= f[k - 1]) { e.target.value = zones.floors[i]; return; }
+  zones = { ...zones, floors: f }; saveZones();
+});
+$("maxHr").addEventListener("change", e => { const v = +e.target.value; if (v > zones.floors[4]) { zones = { ...zones, max: v }; saveZones(); } });
+$("btnFromMax").onclick = () => {
+  const m = +$("maxHr").value || zones.max;
+  zones = { max: m, floors: [0.5, 0.6, 0.7, 0.8, 0.9].map(p => Math.round(m * p)) }; saveZones(); buildZoneEditor();
+};
+$("btnGarmin").onclick = () => { zones = structuredClone(GARMIN_DEFAULT); saveZones(); buildZoneEditor(); };
+function saveZones() { store.set("zones", zones); recomputeZoneSecs(); render(currentHr(Date.now())); }
+function recomputeZoneSecs() {
+  S.zoneSecs = [0, 0, 0, 0, 0, 0];
+  for (let i = 1; i < S.samples.length; i++) S.zoneSecs[zoneOf(S.samples[i].hr)] += S.samples[i].t - S.samples[i - 1].t;
+}
+
+// ---------- Controls ----------
+$("targetSel").value = target;
+$("targetSel").onchange = e => { target = +e.target.value; store.set("target", target); render(currentHr(Date.now())); };
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  win = +b.dataset.win;
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  drawLine();
+});
+$("btnPm").onclick = () => hasBt ? connectPm() : $("noBt").scrollIntoView();
+$("btnHr").onclick = () => hasBt ? connectHr() : $("noBt").scrollIntoView();
+$("btnDemo").onclick = () => demo ? stopDemo() : startDemo();
+$("btnPause").onclick = () => { S.paused = !S.paused; $("btnPause").setAttribute("aria-pressed", S.paused); $("btnPause").textContent = S.paused ? "Resume" : "Pause"; render(currentHr(Date.now())); };
+$("btnReset").onclick = () => {
+  if (S.samples.length && !confirm("Clear this session's data?")) return;
+  S.samples = []; S.zoneSecs = [0, 0, 0, 0, 0, 0]; S.elapsed = 0; render(currentHr(Date.now()));
+};
+$("btnCsv").onclick = () => {
+  if (!S.samples.length) return;
+  const rows = ["seconds,heart_rate,zone,pace_500m_s,stroke_rate,distance_m"];
+  for (const s of S.samples) { const z = zoneOf(s.hr); rows.push([s.t.toFixed(1), s.hr, z === 5 ? 0 : z + 1, s.pace?.toFixed(1) ?? "", s.spm ?? "", s.dist?.toFixed(1) ?? ""].join(",")); }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([rows.join("\n")], { type: "text/csv" }));
+  a.download = `rowzone-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+buildZoneEditor();
+render(null);
+</script>
+</body>
+</html>
