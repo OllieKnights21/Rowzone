@@ -119,6 +119,41 @@ canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%
 .bar-row .tv { text-align: right; line-height: 1.1; min-width: 36px; }
 .bar-row .tv span { color: var(--text-2); display: block; font-size: 10px; }
 
+/* zone state glow around the whole screen */
+body { --glow: transparent; --glow-soft: transparent; }
+body[data-state="in"] { --glow: rgba(63, 185, 80, .9); --glow-soft: rgba(63, 185, 80, .28); }
+body[data-state="hi"] { --glow: rgba(240, 136, 62, .95); --glow-soft: rgba(240, 136, 62, .32); }
+body[data-state="lo"] { --glow: rgba(88, 166, 255, .9); --glow-soft: rgba(88, 166, 255, .28); }
+body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 40;
+  box-shadow: inset 0 0 0 3px var(--glow), inset 0 0 80px var(--glow-soft); transition: box-shadow .8s ease; }
+body[data-state="hi"]::after { animation: nag 1.2s ease-in-out infinite; }
+@keyframes nag { 50% { box-shadow: inset 0 0 0 5px var(--glow), inset 0 0 120px var(--glow-soft); } }
+.gauge-card { transition: background-color .8s ease; }
+@supports (background: color-mix(in srgb, red, blue)) {
+  .gauge-card { background: color-mix(in srgb, var(--surface) 86%, var(--glow-soft)); }
+}
+/* heartbeat pulse ring on the gauge marker */
+#gPulse { transform-box: fill-box; transform-origin: center; animation: beat 0.5s ease-out infinite; }
+@keyframes beat { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(2.3); opacity: 0; } }
+body:not([data-state]) #gPulse, body[data-state=""] #gPulse { display: none; }
+/* goal progress */
+.goal { position: relative; height: 18px; margin-top: 6px; border-radius: 6px; background: var(--surface-2); overflow: hidden; flex: none; }
+.goal-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--z2), #3fb950); transition: width .6s ease; }
+.goal.done .goal-fill { background: linear-gradient(90deg, #3fb950, #7ee787); }
+.goal span { position: relative; display: block; text-align: center; font-size: 11px; line-height: 18px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.stat.streak .value { color: var(--text); }
+body[data-state="in"] .stat.streak { box-shadow: inset 0 0 0 1px rgba(63, 185, 80, .7); }
+/* celebration toast + confetti */
+.toast { position: fixed; left: 50%; top: 22%; transform: translate(-50%, -50%) scale(.6); z-index: 60; pointer-events: none;
+  background: var(--surface); border: 2px solid #3fb950; color: var(--text); border-radius: 16px; padding: 10px 22px;
+  font-size: 26px; font-weight: 750; letter-spacing: -0.01em; opacity: 0; white-space: nowrap; box-shadow: 0 10px 40px rgba(0,0,0,.45); }
+.toast.show { animation: pop 2.6s ease forwards; }
+@keyframes pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  20% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -60%) scale(1); } }
+.confetti { position: fixed; width: 9px; height: 9px; border-radius: 2px; z-index: 59; pointer-events: none; animation: fly 1.6s cubic-bezier(.2,.7,.4,1) forwards; }
+@keyframes fly { to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { body::after, #gPulse, .confetti { animation: none !important; } }
+
 /* bottom bar: connection + settings */
 .bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 8px; overflow-x: auto; scrollbar-width: none; }
 .bar::-webkit-scrollbar { display: none; }
@@ -158,7 +193,8 @@ table.sr { position: absolute; left: -9999px; }
   .bar-row .zl br, .bar-row .zl span { display: none; }
   .stat { padding: 3px 6px; }
   .stat .value { font-size: 16px; }
-  .bar button { padding: 5px 9px; }
+  .bar button, .bar select { padding: 5px 8px; }
+  .bar .status span { display: none; }
 }
 /* very short landscape screens */
 @media (max-height: 360px) {
@@ -173,9 +209,11 @@ table.sr { position: absolute; left: -9999px; }
     <svg class="gauge" id="gauge" viewBox="-26 0 372 196" role="img" aria-label="Heart rate gauge"></svg>
     <div class="gauge-msg"><span class="zone-pill" id="vZone">—</span><span id="vZoneMsg">Target: Zone 2</span></div>
     <div class="stats">
-      <div class="stat"><div class="label">Time</div><div class="value" id="vTime">0:00</div><div class="sub" id="vSrc">&nbsp;</div></div>
+      <div class="stat"><div class="label">Time</div><div class="value" id="vTime">0:00</div><div class="sub" id="vAvg">avg --</div></div>
+      <div class="stat streak"><div class="label">Streak</div><div class="value" id="vStreak">0:00</div><div class="sub" id="vBest">best 0:00</div></div>
       <div class="stat"><div class="label">In zone</div><div class="value" id="vInPct">0%</div><div class="sub" id="vInTime">0:00</div></div>
-      <div class="stat"><div class="label">Avg</div><div class="value" id="vAvg">--</div><div class="sub" id="vMax">max --</div></div>
+    </div>
+    <div class="goal" id="goal"><div class="goal-fill" id="goalFill"></div><span id="goalText">Goal 0 / 30 min</span></div>
     </div>
   </section>
 
@@ -219,6 +257,7 @@ table.sr { position: absolute; left: -9999px; }
     <option value="0">Target Z1</option><option value="1" selected>Target Z2</option>
     <option value="2">Target Z3</option><option value="3">Target Z4</option><option value="4">Target Z5</option>
   </select>
+  <button id="btnSound" aria-pressed="false">🔇 Sound</button>
   <button id="btnZones">Zones</button>
   <button id="btnCsv">CSV</button>
 </nav>
@@ -229,6 +268,7 @@ table.sr { position: absolute; left: -9999px; }
   <div class="zone-edit" id="zoneEdit"></div>
   <div class="row">
     Max HR <input type="number" id="maxHr" min="100" max="230">
+    Goal (min) <input type="number" id="goalMin" min="5" max="300" step="5">
     <button id="btnFromMax">From max HR</button>
     <button id="btnGarmin">Garmin zones</button>
     <div class="spacer"></div>
@@ -236,6 +276,7 @@ table.sr { position: absolute; left: -9999px; }
   </div>
 </dialog>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <table class="sr" id="srTable"><caption>Time in each heart rate zone</caption><thead><tr><th>Zone</th><th>Range</th><th>Time</th><th>Share</th></tr></thead><tbody></tbody></table>
 
 <script>
@@ -251,6 +292,8 @@ const store = {
 let zones = store.get("zones", GARMIN_DEFAULT);
 let target = store.get("target", 1);
 let win = 0;
+let goalMin = store.get("goalMin", 30);
+let soundOn = store.get("sound", false);
 
 // ---------- Session state ----------
 const S = {
@@ -260,6 +303,8 @@ const S = {
   lastTick: null,
   paused: false,
   hrStrap: null, hrStrapAt: 0,
+  streak: 0, best: 0, outFor: 0, nextMilestone: 300, goalHit: false,
+  state: "", stateFor: 0, cueAt: 0, cued: false,
 };
 
 function zoneOf(hr) {
@@ -284,6 +329,66 @@ const fmt = s => {
 
 // ---------- Recording loop: 1 sample per second ----------
 let demo = null;
+// Streaks, milestones, goal and sound cues
+function coach(hr, z, dt) {
+  const [lo, hi] = zoneRange(target);
+  const st = hr < lo ? "lo" : hr > hi ? "hi" : "in";
+  if (st !== S.state) {
+    if (st === "in" && S.cued) sfx.back();
+    S.state = st; S.stateFor = 0; S.cued = false; S.cueAt = 0;
+  } else S.stateFor += dt;
+  if (st === "in") {
+    S.streak += dt; S.outFor = 0;
+    if (S.streak > S.best) S.best = S.streak;
+    if (S.streak >= S.nextMilestone) { celebrate(`${Math.round(S.nextMilestone / 60)} min in Zone ${target + 1}!`); S.nextMilestone += 300; }
+  } else {
+    S.outFor += dt;
+    if (S.outFor > 5) { S.streak = 0; S.nextMilestone = 300; }   // 5 s grace before the streak breaks
+    if (S.stateFor >= 8 && S.stateFor - S.cueAt >= 0 && (!S.cued || S.stateFor - S.cueAt >= 20)) {
+      st === "hi" ? sfx.down() : sfx.up(); S.cued = true; S.cueAt = S.stateFor;
+    }
+  }
+  if (!S.goalHit && S.zoneSecs[target] >= goalMin * 60) { S.goalHit = true; celebrate(`Goal hit: ${goalMin} min in Zone ${target + 1}! 🏆`, true); }
+}
+
+const sfx = (() => {
+  let ctx = null;
+  const ensure = () => { if (!ctx) { const C = window.AudioContext || window.webkitAudioContext; if (C) ctx = new C(); } if (ctx && ctx.state === "suspended") ctx.resume(); return ctx; };
+  const play = notes => {
+    if (!soundOn) return; const c = ensure(); if (!c) return;
+    let t = c.currentTime + 0.02;
+    for (const [f, d] of notes) {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g).connect(c.destination); o.start(t); o.stop(t + d + 0.05); t += d * 0.85;
+    }
+  };
+  return {
+    ensure,
+    down: () => play([[880, .22], [587, .22], [440, .35]]),   // too high: falling
+    up: () => play([[440, .22], [587, .22], [880, .35]]),     // too low: rising
+    back: () => play([[784, .14], [1047, .3]]),               // back in zone
+    win: () => play([[523, .14], [659, .14], [784, .14], [1047, .45]]),
+  };
+})();
+
+function celebrate(text, big) {
+  const t = $("toast"); t.textContent = text; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show");
+  sfx.win();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const colors = ["#3fb950", "#7ee787", "#3987e5", "#9ec5f4", "#e9a23b", "#f0efec"];
+  const n = big ? 70 : 36, x0 = innerWidth / 2, y0 = innerHeight * 0.22;
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement("i"); c.className = "confetti";
+    const a = Math.random() * Math.PI * 2, d = 80 + Math.random() * (big ? 320 : 220);
+    c.style.left = x0 + "px"; c.style.top = y0 + "px"; c.style.background = colors[i % colors.length];
+    c.style.setProperty("--dx", Math.cos(a) * d + "px"); c.style.setProperty("--dy", Math.sin(a) * d + 120 + "px");
+    c.style.setProperty("--rot", (Math.random() * 720 - 360) + "deg");
+    document.body.appendChild(c); setTimeout(() => c.remove(), 1700);
+  }
+}
+
 function tick() {
   const now = Date.now();
   const dt = S.lastTick == null ? 0 : Math.min((now - S.lastTick) / 1000, 3) * (demo ? demo.speed : 1);
@@ -295,7 +400,9 @@ function tick() {
     const z = zoneOf(hr);
     S.zoneSecs[z] += dt;
     S.samples.push({ t: S.elapsed, hr });
+    coach(hr, z, dt);
   }
+  document.body.dataset.state = hr == null || S.paused ? "" : S.state;
   render(hr);
 }
 setInterval(tick, 1000);
@@ -373,14 +480,17 @@ function render(hr) {
     $("vZoneMsg").textContent = msg;
   }
   $("vTime").textContent = fmt(S.elapsed);
-  $("vSrc").textContent = S.paused ? "Paused" : (S.hrStrap != null && Date.now() - S.hrStrapAt < 5000 ? "live" : "\u00a0");
+  $("vStreak").textContent = fmt(S.streak); $("vBest").textContent = "best " + fmt(S.best);
+  const gp = Math.min(1, S.zoneSecs[target] / (goalMin * 60));
+  $("goalFill").style.width = (gp * 100) + "%"; $("goal").classList.toggle("done", gp >= 1);
+  $("goalText").textContent = S.paused ? "Paused" : gp >= 1 ? `Goal done: ${goalMin} min in Zone ${target + 1} 🏆` : `Goal ${Math.floor(S.zoneSecs[target] / 60)} / ${goalMin} min in Zone ${target + 1}`;
   const inT = S.zoneSecs[target];
   const pct = S.elapsed ? Math.round(100 * inT / S.elapsed) : 0;
   $("vInPct").textContent = pct + "%"; $("vInTime").textContent = fmt(inT); $("sumPct").textContent = pct + "%";
   if (S.samples.length) {
     let sum = 0, mx = 0; for (const s of S.samples) { sum += s.hr; if (s.hr > mx) mx = s.hr; }
-    $("vAvg").textContent = Math.round(sum / S.samples.length); $("vMax").textContent = "max " + mx;
-  } else { $("vAvg").textContent = "--"; $("vMax").textContent = "max --"; }
+    $("vAvg").textContent = "avg " + Math.round(sum / S.samples.length);
+  } else $("vAvg").textContent = "avg --";
   renderBars();
   drawLine();
 }
@@ -409,13 +519,21 @@ function renderGauge(hr) {
     const anchor = a > Math.PI * 0.6 ? "end" : a < Math.PI * 0.4 ? "start" : "middle";
     out += `<text class="tk" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle">${v}</text>`;
   }
+  out += `<circle id="gPulse" r="13" fill="none" stroke="var(--glow)" stroke-width="3" visibility="hidden"/>`;
+  out += `<circle id="gMark" r="13" fill="var(--line)" stroke="var(--surface)" stroke-width="3" visibility="hidden"/>`;
+  out += `<text id="gNum" class="hrnum" x="${cx}" y="${cy - 24}" text-anchor="middle">--</text>`;
+  out += `<text class="unit" x="${cx}" y="${cy + 2}" text-anchor="middle">bpm</text>`;
+  const g = $("gauge");
+  const key = JSON.stringify([zones, target]);
+  if (g.dataset.key !== key) { g.innerHTML = out; g.dataset.key = key; }
+  const mk = $("gMark"), pu = $("gPulse");
   if (hr != null) {
     const [mx, my] = pt(ang(hr), r);
-    out += `<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="13" fill="var(--line)" stroke="var(--surface)" stroke-width="3"/>`;
-  }
-  out += `<text class="hrnum" x="${cx}" y="${cy - 24}" text-anchor="middle">${hr ?? "--"}</text>`;
-  out += `<text class="unit" x="${cx}" y="${cy + 2}" text-anchor="middle">bpm</text>`;
-  const g = $("gauge"); g.innerHTML = out;
+    for (const c of [mk, pu]) { c.setAttribute("cx", mx.toFixed(1)); c.setAttribute("cy", my.toFixed(1)); c.setAttribute("visibility", "visible"); }
+    const dur = (60 / hr).toFixed(2) + "s";
+    if (pu.style.animationDuration !== dur) pu.style.animationDuration = dur;
+  } else { mk.setAttribute("visibility", "hidden"); pu.setAttribute("visibility", "hidden"); }
+  $("gNum").textContent = hr ?? "--";
   g.setAttribute("aria-label", hr == null ? "Heart rate gauge, no reading" : `Heart rate ${hr} bpm`);
 }
 
@@ -591,7 +709,9 @@ $("btnDemo").onclick = () => demo ? stopDemo() : startDemo();
 $("btnPause").onclick = () => { S.paused = !S.paused; $("btnPause").setAttribute("aria-pressed", S.paused); $("btnPause").textContent = S.paused ? "Resume" : "Pause"; render(currentHr(Date.now())); };
 $("btnReset").onclick = () => {
   if (S.samples.length && !confirm("Clear this session's data?")) return;
-  S.samples = []; S.zoneSecs = [0, 0, 0, 0, 0, 0]; S.elapsed = 0; render(currentHr(Date.now()));
+  S.samples = []; S.zoneSecs = [0, 0, 0, 0, 0, 0]; S.elapsed = 0;
+  Object.assign(S, { streak: 0, best: 0, outFor: 0, nextMilestone: 300, goalHit: false, state: "", stateFor: 0, cueAt: 0, cued: false });
+  render(currentHr(Date.now()));
 };
 $("btnCsv").onclick = () => {
   if (!S.samples.length) return;
@@ -603,6 +723,11 @@ $("btnCsv").onclick = () => {
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
 
+function setSoundBtn() { $("btnSound").setAttribute("aria-pressed", soundOn); $("btnSound").textContent = soundOn ? "🔊 Sound" : "🔇 Sound"; }
+$("btnSound").onclick = () => { soundOn = !soundOn; store.set("sound", soundOn); setSoundBtn(); if (soundOn) { sfx.ensure(); sfx.back(); } };
+setSoundBtn();
+$("goalMin").value = goalMin;
+$("goalMin").addEventListener("change", e => { const v = +e.target.value; if (v >= 1) { goalMin = v; store.set("goalMin", v); S.goalHit = S.zoneSecs[target] >= v * 60; render(currentHr(Date.now())); } });
 $("btnZones").onclick = () => $("settings").showModal();
 $("btnCloseZones").onclick = () => $("settings").close();
 buildZoneEditor();

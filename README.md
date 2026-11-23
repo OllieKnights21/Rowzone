@@ -6,6 +6,7 @@ Live heart rate zone display for rowing (or any indoor session). Open the page, 
 - **Line graph** of heart rate over time with your target zone shaded (default Zone 2, selectable).
 - **Time in zone** bars for Zones 1 to 5, with the share of the session in your target.
 - Zones are editable (or set from max HR) and saved in your browser. Defaults come from Ollie's Garmin zones (max 189).
+- **Stay-in-zone coaching:** the screen edge glows green in your target zone, blue when too low and pulses orange when too high; a streak timer (with 5 s grace), milestone celebrations every 5 minutes, a goal bar (default 30 min, set in Zones), and optional sound cues (rising tone = speed up, falling tone = ease off, chime = back in zone).
 - Export the session as CSV. Keeps the screen awake while connected.
 
 ## Browser support
