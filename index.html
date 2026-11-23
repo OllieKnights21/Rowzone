@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>RowZone</title>
 <meta name="description" content="Live heart rate zones from a Bluetooth heart rate strap, for rowing.">
 <meta name="theme-color" content="#141413">
@@ -48,188 +49,194 @@
   --warn: #b86e00;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; }
+html, body { margin: 0; height: 100%; }
 body {
   background: var(--bg); color: var(--text);
-  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
+  font: 14px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+  display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden;
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-.wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
-header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
-h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
-h1 svg { width: 22px; height: 22px; }
-.spacer { flex: 1; }
 button, select, input {
-  font: inherit; color: var(--text); background: var(--surface-2);
-  border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px;
+  font: inherit; font-size: 13px; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 11px;
 }
 button { cursor: pointer; white-space: nowrap; }
 button:hover { border-color: var(--text-3); }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-button:disabled { opacity: .5; cursor: default; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.status { font-size: 13px; color: var(--text-2); display: flex; gap: 12px; flex-wrap: wrap; }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); margin-right: 6px; vertical-align: 1px; }
-.dot.on { background: #3fb950; }
-.banner { background: var(--surface); border: 1px solid var(--warn); color: var(--text); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px; font-size: 14px; }
-.banner b { color: var(--warn); }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
-.tiles { display: grid; grid-template-columns: 1.6fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
-.gauge-card { grid-row: 1 / span 3; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.gauge-card .label { align-self: flex-start; }
-.gauge { width: 100%; max-width: 460px; display: block; }
+.spacer { flex: 1; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex: none; }
+.card-head h2 { white-space: nowrap; font-size: 12px; margin: 0; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; }
+
+/* main: three panels filling the screen */
+.app { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.55fr) minmax(0, 0.9fr); gap: 8px; padding: 8px 8px 0; }
+
+/* gauge panel */
+.gauge-card { align-items: stretch; }
+.gauge { flex: 1; min-height: 0; width: 100%; display: block; }
 .gauge text { font-family: inherit; }
-.gauge .hrnum { font-size: 64px; font-weight: 700; fill: var(--text); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.gauge .hrnum { font-size: 70px; font-weight: 700; fill: var(--text); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .gauge .unit { font-size: 15px; fill: var(--text-2); }
-.gauge .zl { font-size: 12px; fill: var(--text-3); }
+.gauge .zl { font-size: 13px; fill: var(--text-3); }
 .gauge .zl.t { fill: var(--accent); font-weight: 650; }
-.gauge .tk { font-size: 11px; fill: var(--text-3); font-variant-numeric: tabular-nums; }
-.gauge-msg { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: -4px; font-size: 14px; color: var(--text-2); }
-.tile .label { font-size: 12px; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; }
-.tile .value { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-top: 2px; }
-.tile .sub { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
-.zone-pill { display: inline-block; white-space: nowrap; font-size: 13px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text); }
+.gauge .tk { font-size: 12px; fill: var(--text-3); font-variant-numeric: tabular-nums; }
+.gauge-msg { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 13px; color: var(--text-2); flex: none; min-height: 22px; }
+.zone-pill { display: inline-block; white-space: nowrap; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text); }
 .zone-pill.in { border-color: var(--accent); color: var(--accent); }
 .zone-pill.hi, .zone-pill.lo { border-color: var(--warn); color: var(--warn); }
-.grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
-.card h2 { font-size: 15px; margin: 0; font-weight: 600; }
-.card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-.card-head .hint { font-size: 13px; color: var(--text-2); }
-.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-.seg button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 13px; background: transparent; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; flex: none; }
+.stat { background: var(--surface-2); border-radius: 8px; padding: 4px 8px; min-width: 0; }
+.stat .label { font-size: 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .value { font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.15; }
+.stat .sub { font-size: 11px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* chart panel */
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 2px 8px; font-size: 12px; background: transparent; }
 .seg button[aria-pressed="true"] { background: var(--surface-2); box-shadow: none; color: var(--text); font-weight: 600; }
-.chart-box { position: relative; height: 340px; }
-canvas { display: block; width: 100%; height: 100%; }
+.chart-box { position: relative; flex: 1; min-height: 0; }
+canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
 .tip {
   position: absolute; pointer-events: none; background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 6px 9px; font-size: 13px; font-variant-numeric: tabular-nums;
+  border-radius: 8px; padding: 5px 8px; font-size: 12px; font-variant-numeric: tabular-nums;
   white-space: nowrap; display: none; box-shadow: 0 4px 14px rgba(0,0,0,.25); z-index: 2;
 }
-.tip b { font-weight: 650; }
-.empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 14px; text-align: center; padding: 20px; }
-.bars { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
-.bar-row { display: grid; grid-template-columns: 74px 1fr 92px; gap: 10px; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums; }
-.bar-row .zl { color: var(--text-2); line-height: 1.2; }
-.bar-row .zl b { color: var(--text); font-size: 14px; }
-.bar-row.target .zl b::after { content: " ◎"; color: var(--accent); }
-.bar-track { height: 26px; background: var(--surface-2); border-radius: 4px; position: relative; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 0 4px 4px 0; min-width: 0; transition: width .4s ease; }
+.empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 13px; text-align: center; padding: 16px; }
+
+/* time-in-zone panel */
+.card-head .pct { white-space: nowrap; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.card-head .pct b { color: var(--text); font-size: 15px; }
+.bars { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+.bar-row { flex: 1; min-height: 0; display: grid; grid-template-columns: 50px 1fr auto; gap: 6px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.bar-row .zl { color: var(--text-3); line-height: 1.1; font-size: 10px; white-space: nowrap; }
+.bar-row .zl b { color: var(--text); font-size: 13px; }
+.bar-row.target .zl b { color: var(--accent); }
+.bar-track { height: 100%; max-height: 30px; min-height: 12px; background: var(--surface-2); border-radius: 4px; position: relative; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 0 4px 4px 0; transition: width .4s ease; }
 .bar-row.target .bar-track { box-shadow: inset 0 0 0 2px var(--accent); }
-.bar-row .tv { text-align: right; }
-.bar-row .tv span { color: var(--text-2); display: block; font-size: 12px; }
-.summary { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 14px; color: var(--text-2); }
-.summary b { color: var(--text); font-size: 22px; font-variant-numeric: tabular-nums; }
-details.settings { margin-top: 12px; }
-details.settings summary { cursor: pointer; font-weight: 600; list-style: none; }
-details.settings summary::-webkit-details-marker { display: none; }
-details.settings summary::before { content: "▸ "; color: var(--text-3); }
-details.settings[open] summary::before { content: "▾ "; }
-.zone-edit { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
-.zone-edit label { font-size: 13px; color: var(--text-2); display: flex; flex-direction: column; gap: 4px; }
+.bar-row .tv { text-align: right; line-height: 1.1; min-width: 36px; }
+.bar-row .tv span { color: var(--text-2); display: block; font-size: 10px; }
+
+/* bottom bar: connection + settings */
+.bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 8px; overflow-x: auto; scrollbar-width: none; }
+.bar::-webkit-scrollbar { display: none; }
+.bar .status { font-size: 12px; color: var(--text-2); white-space: nowrap; margin-right: 4px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); margin-right: 5px; vertical-align: 0; }
+.dot.on { background: #3fb950; }
+.bar select { padding: 5px 6px; }
+.nobt { flex: none; font-size: 12px; color: var(--text); background: var(--surface); border-top: 1px solid var(--warn); padding: 4px 10px; }
+.nobt b { color: var(--warn); }
+
+/* zone settings dialog */
+dialog { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; max-width: min(560px, 94vw); max-height: 92dvh; }
+dialog::backdrop { background: rgba(0,0,0,.5); }
+dialog h3 { margin: 0 0 4px; font-size: 15px; }
+dialog p { margin: 0 0 10px; font-size: 13px; color: var(--text-2); }
+.zone-edit { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
+.zone-edit label { font-size: 12px; color: var(--text-2); display: flex; flex-direction: column; gap: 3px; }
 .zone-edit input { width: 100%; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--text-2); }
-.row input[type=number] { width: 90px; }
-footer { color: var(--text-3); font-size: 13px; margin: 18px 0 8px; }
-footer a { color: var(--text-2); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-2); }
+.row input[type=number] { width: 76px; }
 table.sr { position: absolute; left: -9999px; }
-@media (max-width: 900px) {
-  .tiles { grid-template-columns: repeat(3, 1fr); grid-template-rows: auto; }
-  .gauge-card { grid-row: auto; grid-column: 1 / -1; }
-  .grid2 { grid-template-columns: 1fr; }
+
+/* portrait phones: stack and scroll */
+@media (max-width: 700px) and (orientation: portrait) {
+  body { height: auto; min-height: 100dvh; overflow: auto; }
+  .app { grid-template-columns: 1fr; }
+  .gauge { height: 220px; flex: none; }
+  .chart-box { height: 240px; flex: none; }
+  .bars { height: 220px; flex: none; }
 }
-@media (max-width: 520px) {
-  .tile .value { font-size: 22px; }
-  .chart-box { height: 260px; }
+/* narrow landscape phones */
+@media (max-width: 760px) and (orientation: landscape) {
+  .app { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 0.8fr); gap: 6px; padding: 6px 6px 0; }
+  .card { padding: 6px 8px; }
+  .pct .pw { display: none; }
+  .bar-row { grid-template-columns: 22px 1fr auto; gap: 4px; }
+  .bar-row .zl br, .bar-row .zl span { display: none; }
+  .stat { padding: 3px 6px; }
+  .stat .value { font-size: 16px; }
+  .bar button { padding: 5px 9px; }
+}
+/* very short landscape screens */
+@media (max-height: 360px) {
+  .stat .value { font-size: 17px; }
+  .stat .sub { display: none; }
 }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28S3 20 3 11a6.5 6.5 0 0 1 13-1 6.5 6.5 0 0 1 13 1c0 9-13 17-13 17z" fill="var(--accent)"/></svg>RowZone</h1>
-    <div class="status" id="status">
-      <span><i class="dot" id="hrDot"></i><span id="hrText">HR strap not connected</span></span>
+<main class="app">
+  <section class="card gauge-card" aria-label="Current heart rate">
+    <svg class="gauge" id="gauge" viewBox="-26 0 372 196" role="img" aria-label="Heart rate gauge"></svg>
+    <div class="gauge-msg"><span class="zone-pill" id="vZone">—</span><span id="vZoneMsg">Target: Zone 2</span></div>
+    <div class="stats">
+      <div class="stat"><div class="label">Time</div><div class="value" id="vTime">0:00</div><div class="sub" id="vSrc">&nbsp;</div></div>
+      <div class="stat"><div class="label">In zone</div><div class="value" id="vInPct">0%</div><div class="sub" id="vInTime">0:00</div></div>
+      <div class="stat"><div class="label">Avg</div><div class="value" id="vAvg">--</div><div class="sub" id="vMax">max --</div></div>
     </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Heart rate</h2>
+      <div class="spacer"></div>
+      <div class="seg" role="group" aria-label="Time window">
+        <button data-win="300" aria-pressed="false">5m</button>
+        <button data-win="900" aria-pressed="false">15m</button>
+        <button data-win="0" aria-pressed="true">All</button>
+      </div>
+    </div>
+    <div class="chart-box" id="lineBox">
+      <canvas id="line" role="img" aria-label="Heart rate over time with target zone band"></canvas>
+      <div class="tip" id="tip"></div>
+      <div class="empty" id="lineEmpty">Connect your heart rate strap below, or press Demo.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Time in zone</h2>
+      <div class="spacer"></div>
+      <span class="pct"><b id="sumPct">0%</b><span class="pw"> target</span></span>
+    </div>
+    <div class="bars" id="bars"></div>
+  </section>
+</main>
+
+<div class="nobt" id="noBt" hidden><b>No Bluetooth in this browser.</b> On iPhone use the Bluefy app; on a computer or Android use Chrome or Edge. Demo still works.</div>
+
+<nav class="bar" aria-label="Connection and settings">
+  <span class="status"><i class="dot" id="hrDot"></i><span id="hrText">Not connected</span></span>
+  <button class="primary" id="btnHr">Connect HR</button>
+  <button id="btnDemo" aria-pressed="false">Demo</button>
+  <button id="btnPause" aria-pressed="false">Pause</button>
+  <button id="btnReset">Reset</button>
+  <div class="spacer"></div>
+  <select id="targetSel" aria-label="Target zone">
+    <option value="0">Target Z1</option><option value="1" selected>Target Z2</option>
+    <option value="2">Target Z3</option><option value="3">Target Z4</option><option value="4">Target Z5</option>
+  </select>
+  <button id="btnZones">Zones</button>
+  <button id="btnCsv">CSV</button>
+</nav>
+
+<dialog id="settings">
+  <h3>Heart rate zones</h3>
+  <p>Each zone starts at the bpm shown and runs up to the next one. Saved in this browser.</p>
+  <div class="zone-edit" id="zoneEdit"></div>
+  <div class="row">
+    Max HR <input type="number" id="maxHr" min="100" max="230">
+    <button id="btnFromMax">From max HR</button>
+    <button id="btnGarmin">Garmin zones</button>
     <div class="spacer"></div>
-    <div class="toolbar">
-      <button class="primary" id="btnHr">Connect heart rate</button>
-      <button id="btnDemo" aria-pressed="false">Demo</button>
-      <button id="btnPause" aria-pressed="false">Pause</button>
-      <button id="btnReset">Reset</button>
-      <button id="btnCsv">Export CSV</button>
-    </div>
-  </header>
-
-  <div class="banner" id="noBt" hidden>
-    <b>Bluetooth isn't available in this browser.</b>
-    Open this page in Chrome or Edge on Windows, Mac, Android or ChromeOS. On iPhone or iPad, use the free <i>Bluefy</i> browser app.
-    You can still try the Demo.
+    <button class="primary" id="btnCloseZones">Done</button>
   </div>
+</dialog>
 
-  <section class="tiles">
-    <div class="card tile gauge-card">
-      <div class="label">Heart rate</div>
-      <svg class="gauge" id="gauge" viewBox="-26 0 372 196" role="img" aria-label="Heart rate gauge"></svg>
-      <div class="gauge-msg"><span class="zone-pill" id="vZone">—</span><span id="vZoneMsg">Target: Zone 2</span></div>
-    </div>
-    <div class="card tile"><div class="label">Elapsed</div><div class="value" id="vTime">0:00</div><div class="sub" id="vSrc">&nbsp;</div></div>
-    <div class="card tile"><div class="label">In target</div><div class="value" id="vInPct">0%</div><div class="sub" id="vInTime">0:00</div></div>
-    <div class="card tile"><div class="label">Avg HR</div><div class="value" id="vAvg">--</div><div class="sub" id="vMax">max --</div></div>
-  </section>
-
-  <section class="grid2">
-    <div class="card">
-      <div class="card-head">
-        <h2>Heart rate</h2>
-        <span class="hint" id="bandHint">Shaded band = target zone</span>
-        <div class="spacer"></div>
-        <div class="seg" role="group" aria-label="Time window">
-          <button data-win="300" aria-pressed="false">5 min</button>
-          <button data-win="900" aria-pressed="false">15 min</button>
-          <button data-win="0" aria-pressed="true">All</button>
-        </div>
-      </div>
-      <div class="chart-box" id="lineBox">
-        <canvas id="line" role="img" aria-label="Heart rate over time with target zone band"></canvas>
-        <div class="tip" id="tip"></div>
-        <div class="empty" id="lineEmpty">Connect your heart rate strap, or press Demo, to start.</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-head">
-        <h2>Time in zone</h2>
-        <div class="spacer"></div>
-        <label class="row">Target
-          <select id="targetSel" aria-label="Target zone">
-            <option value="0">Zone 1</option><option value="1" selected>Zone 2</option>
-            <option value="2">Zone 3</option><option value="3">Zone 4</option><option value="4">Zone 5</option>
-          </select>
-        </label>
-      </div>
-      <div class="bars" id="bars"></div>
-      <div class="summary"><b id="sumPct">0%</b> of this session in your target zone</div>
-    </div>
-  </section>
-
-  <details class="card settings" id="settings">
-    <summary>Heart rate zones</summary>
-    <p class="row" style="margin-top:10px">Each zone starts at the bpm shown and runs up to the next zone's start. Saved in this browser.</p>
-    <div class="zone-edit" id="zoneEdit"></div>
-    <div class="row">
-      Max HR <input type="number" id="maxHr" min="100" max="230">
-      <button id="btnFromMax">Set zones from max HR (50/60/70/80/90%)</button>
-      <button id="btnGarmin">Reset to my Garmin zones</button>
-    </div>
-  </details>
-
-  <table class="sr" id="srTable"><caption>Time in each heart rate zone</caption><thead><tr><th>Zone</th><th>Range</th><th>Time</th><th>Share</th></tr></thead><tbody></tbody></table>
-
-  <footer>
-    Works with any standard Bluetooth heart rate strap or watch that broadcasts heart rate.
-    Data stays in your browser. <a href="https://github.com/OllieKnights21/Rowzone">Source</a>
-  </footer>
-</div>
+<table class="sr" id="srTable"><caption>Time in each heart rate zone</caption><thead><tr><th>Zone</th><th>Range</th><th>Time</th><th>Share</th></tr></thead><tbody></tbody></table>
 
 <script>
 "use strict";
@@ -339,12 +346,12 @@ function startDemo() {
     }
   };
   $("btnDemo").setAttribute("aria-pressed", "true");
-  setHrs(true, "Demo (10× speed)");
+  setHrs(true, "Demo 10×");
 }
 function stopDemo() {
   demo = null; S.hrStrap = null;
   $("btnDemo").setAttribute("aria-pressed", "false");
-  setHrs(false, "HR strap not connected");
+  setHrs(false, "Not connected");
 }
 
 // ---------- Rendering ----------
@@ -366,7 +373,7 @@ function render(hr) {
     $("vZoneMsg").textContent = msg;
   }
   $("vTime").textContent = fmt(S.elapsed);
-  $("vSrc").textContent = S.paused ? "Paused" : (S.hrStrap != null && Date.now() - S.hrStrapAt < 5000 ? "HR from strap" : " ");
+  $("vSrc").textContent = S.paused ? "Paused" : (S.hrStrap != null && Date.now() - S.hrStrapAt < 5000 ? "live" : "\u00a0");
   const inT = S.zoneSecs[target];
   const pct = S.elapsed ? Math.round(100 * inT / S.elapsed) : 0;
   $("vInPct").textContent = pct + "%"; $("vInTime").textContent = fmt(inT); $("sumPct").textContent = pct + "%";
@@ -459,7 +466,7 @@ function drawLine() {
   for (const s of pts) { if (s.hr < yMin) yMin = s.hr - 5; if (s.hr > yMax) yMax = s.hr + 5; }
   yMin = Math.floor(yMin / 10) * 10; yMax = Math.ceil(yMax / 10) * 10;
 
-  const L = 40, R = 52, T = 10, B = 26, pw = W - L - R, ph = H - T - B;
+  const L = 34, R = 30, T = 8, B = 22, pw = W - L - R, ph = H - T - B;
   const X = t => L + ((t - tStart) / span) * pw;
   const Y = v => T + (1 - (v - yMin) / (yMax - yMin)) * ph;
   geom = { X, Y, L, R, T, B, pw, ph, tStart, span, pts };
@@ -477,7 +484,7 @@ function drawLine() {
     ctx.fillStyle = i === target ? css("--accent") : css("--text-3");
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.font = (i === target ? "600 " : "") + "12px system-ui, sans-serif";
-    ctx.fillText("Z" + (i + 1), L + pw + 8, (Y(a) + Y(b)) / 2);
+    ctx.fillText("Z" + (i + 1), L + pw + 6, (Y(a) + Y(b)) / 2);
   }
   ctx.font = "12px system-ui, sans-serif";
   // target band
@@ -547,7 +554,7 @@ function buildZoneEditor() {
   const ed = $("zoneEdit"); ed.innerHTML = "";
   zones.floors.forEach((f, i) => {
     const l = document.createElement("label");
-    l.innerHTML = `Zone ${i + 1} starts at (bpm)<input type="number" min="40" max="230" value="${f}" data-i="${i}">`;
+    l.innerHTML = `Zone ${i + 1}<input type="number" min="40" max="230" value="${f}" data-i="${i}">`;
     ed.appendChild(l);
   });
   $("maxHr").value = zones.max;
@@ -596,6 +603,8 @@ $("btnCsv").onclick = () => {
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
 
+$("btnZones").onclick = () => $("settings").showModal();
+$("btnCloseZones").onclick = () => $("settings").close();
 buildZoneEditor();
 render(null);
 </script>
