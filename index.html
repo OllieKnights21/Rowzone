@@ -24,9 +24,12 @@
   --band-edge: rgba(57, 135, 229, 0.55);
   --line: #f0efec;
   /* ordinal ramp: low zone = dim, high zone = bright (dark surface) */
-  --z1: #184f95; --z2: #256abf; --z3: #3987e5; --z4: #6da7ec; --z5: #9ec5f4;
   --warn: #e9a23b;
   --radius: 12px;
+  /* Garmin heart rate zone colours: grey, blue, green, orange, red */
+  --z1-rgb: 160, 160, 160; --z2-rgb: 30, 136, 229; --z3-rgb: 67, 160, 71; --z4-rgb: 251, 140, 0; --z5-rgb: 229, 57, 53;
+  --z1: rgb(var(--z1-rgb)); --z2: rgb(var(--z2-rgb)); --z3: rgb(var(--z3-rgb)); --z4: rgb(var(--z4-rgb)); --z5: rgb(var(--z5-rgb));
+  --tz: var(--z2); --tz-rgb: var(--z2-rgb);
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
@@ -35,7 +38,6 @@
     --text: #0b0b0b; --text-2: #52514e; --text-3: #7a7974; --grid: #e7e6e1;
     --accent: #2a78d6; --band: rgba(42, 120, 214, 0.13); --band-edge: rgba(42, 120, 214, 0.5);
     --line: #0b0b0b;
-    --z1: #86b6ef; --z2: #5598e7; --z3: #2a78d6; --z4: #1c5cab; --z5: #104281;
     --warn: #b86e00;
   }
 }
@@ -45,7 +47,6 @@
   --text: #0b0b0b; --text-2: #52514e; --text-3: #7a7974; --grid: #e7e6e1;
   --accent: #2a78d6; --band: rgba(42, 120, 214, 0.13); --band-edge: rgba(42, 120, 214, 0.5);
   --line: #0b0b0b;
-  --z1: #86b6ef; --z2: #5598e7; --z3: #2a78d6; --z4: #1c5cab; --z5: #104281;
   --warn: #b86e00;
 }
 * { box-sizing: border-box; }
@@ -80,11 +81,11 @@ button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0
 .gauge .hrnum { font-size: 70px; font-weight: 700; fill: var(--text); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .gauge .unit { font-size: 15px; fill: var(--text-2); }
 .gauge .zl { font-size: 13px; fill: var(--text-3); }
-.gauge .zl.t { fill: var(--accent); font-weight: 650; }
+.gauge .zl.t { fill: var(--tz); font-weight: 650; }
 .gauge .tk { font-size: 12px; fill: var(--text-3); font-variant-numeric: tabular-nums; }
 .gauge-msg { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 13px; color: var(--text-2); flex: none; min-height: 22px; }
 .zone-pill { display: inline-block; white-space: nowrap; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text); }
-.zone-pill.in { border-color: var(--accent); color: var(--accent); }
+.zone-pill.in { border-color: var(--tz); color: var(--tz); }
 .zone-pill.hi, .zone-pill.lo { border-color: var(--warn); color: var(--warn); }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; flex: none; }
 .stat { background: var(--surface-2); border-radius: 8px; padding: 4px 8px; min-width: 0; }
@@ -112,18 +113,19 @@ canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%
 .bar-row { flex: 1; min-height: 0; display: grid; grid-template-columns: 50px 1fr auto; gap: 6px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
 .bar-row .zl { color: var(--text-3); line-height: 1.1; font-size: 10px; white-space: nowrap; }
 .bar-row .zl b { color: var(--text); font-size: 13px; }
-.bar-row.target .zl b { color: var(--accent); }
+.bar-row.target .zl b { color: var(--tz); }
 .bar-track { height: 100%; max-height: 30px; min-height: 12px; background: var(--surface-2); border-radius: 4px; position: relative; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 0 4px 4px 0; transition: width .4s ease; }
-.bar-row.target .bar-track { box-shadow: inset 0 0 0 2px var(--accent); }
+.bar-row.target .bar-track { box-shadow: inset 0 0 0 2px var(--tz); }
 .bar-row .tv { text-align: right; line-height: 1.1; min-width: 36px; }
 .bar-row .tv span { color: var(--text-2); display: block; font-size: 10px; }
 
 /* zone state glow around the whole screen */
 body { --glow: transparent; --glow-soft: transparent; }
-body[data-state="in"] { --glow: rgba(63, 185, 80, .9); --glow-soft: rgba(63, 185, 80, .28); }
-body[data-state="hi"] { --glow: rgba(240, 136, 62, .95); --glow-soft: rgba(240, 136, 62, .32); }
-body[data-state="lo"] { --glow: rgba(88, 166, 255, .9); --glow-soft: rgba(88, 166, 255, .28); }
+/* glow takes the colour of the zone you're in right now */
+body[data-zone="0"] { --zr: var(--z1-rgb); } body[data-zone="1"] { --zr: var(--z2-rgb); } body[data-zone="2"] { --zr: var(--z3-rgb); }
+body[data-zone="3"] { --zr: var(--z4-rgb); } body[data-zone="4"] { --zr: var(--z5-rgb); } body[data-zone="5"] { --zr: var(--z1-rgb); }
+body[data-state="in"], body[data-state="hi"], body[data-state="lo"] { --glow: rgba(var(--zr), .95); --glow-soft: rgba(var(--zr), .3); }
 body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 40;
   box-shadow: inset 0 0 0 3px var(--glow), inset 0 0 80px var(--glow-soft); transition: box-shadow .8s ease; }
 body[data-state="hi"]::after { animation: nag 1.2s ease-in-out infinite; }
@@ -138,14 +140,14 @@ body[data-state="hi"]::after { animation: nag 1.2s ease-in-out infinite; }
 body:not([data-state]) #gPulse, body[data-state=""] #gPulse { display: none; }
 /* goal progress */
 .goal { position: relative; height: 18px; margin-top: 6px; border-radius: 6px; background: var(--surface-2); overflow: hidden; flex: none; }
-.goal-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--z2), #3fb950); transition: width .6s ease; }
-.goal.done .goal-fill { background: linear-gradient(90deg, #3fb950, #7ee787); }
+.goal-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, rgba(var(--tz-rgb), .55), var(--tz)); transition: width .6s ease; }
+.goal.done .goal-fill { background: var(--tz); }
 .goal span { position: relative; display: block; text-align: center; font-size: 11px; line-height: 18px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
 .stat.streak .value { color: var(--text); }
-body[data-state="in"] .stat.streak { box-shadow: inset 0 0 0 1px rgba(63, 185, 80, .7); }
+body[data-state="in"] .stat.streak { box-shadow: inset 0 0 0 1px var(--tz); }
 /* celebration toast + confetti */
 .toast { position: fixed; left: 50%; top: 22%; transform: translate(-50%, -50%) scale(.6); z-index: 60; pointer-events: none;
-  background: var(--surface); border: 2px solid #3fb950; color: var(--text); border-radius: 16px; padding: 10px 22px;
+  background: var(--surface); border: 2px solid var(--tz); color: var(--text); border-radius: 16px; padding: 10px 22px;
   font-size: 26px; font-weight: 750; letter-spacing: -0.01em; opacity: 0; white-space: nowrap; box-shadow: 0 10px 40px rgba(0,0,0,.45); }
 .toast.show { animation: pop 2.6s ease forwards; }
 @keyframes pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
@@ -377,7 +379,7 @@ function celebrate(text, big) {
   const t = $("toast"); t.textContent = text; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show");
   sfx.win();
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const colors = ["#3fb950", "#7ee787", "#3987e5", "#9ec5f4", "#e9a23b", "#f0efec"];
+  const colors = [1, 2, 3, 4, 5].map(i => css("--z" + i)).concat(["#f0efec"]);
   const n = big ? 70 : 36, x0 = innerWidth / 2, y0 = innerHeight * 0.22;
   for (let i = 0; i < n; i++) {
     const c = document.createElement("i"); c.className = "confetti";
@@ -403,6 +405,7 @@ function tick() {
     coach(hr, z, dt);
   }
   document.body.dataset.state = hr == null || S.paused ? "" : S.state;
+  document.body.dataset.zone = hr == null ? "" : zoneOf(hr);
   render(hr);
 }
 setInterval(tick, 1000);
@@ -466,6 +469,8 @@ const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 function render(hr) {
+  const rs = document.documentElement.style;
+  rs.setProperty("--tz", `var(--z${target + 1})`); rs.setProperty("--tz-rgb", `var(--z${target + 1}-rgb)`);
   renderGauge(hr);
   const z = zoneOf(hr);
   const pill = $("vZone");
@@ -512,7 +517,7 @@ function renderGauge(hr) {
     out += `<path d="${arc(lo + (i ? gap : 0), hi - (i < 4 ? gap : 0), r)}" fill="none" stroke="var(--z${i + 1})" stroke-width="${sw}"/>`;
     const [lx, ly] = pt(ang((lo + hi) / 2), r - sw / 2 - 14);
     out += `<text class="zl${i === target ? " t" : ""}" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle">Z${i + 1}</text>`;
-    if (i === target) out += `<path d="${arc(lo, hi, r + sw / 2 + 7)}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>`;
+    if (i === target) out += `<path d="${arc(lo, hi, r + sw / 2 + 7)}" fill="none" stroke="var(--tz)" stroke-width="4" stroke-linecap="round"/>`;
   }
   for (const v of [...zones.floors, gMax]) {
     const a = ang(v), [tx, ty] = pt(a, r + sw / 2 + 20);
@@ -599,7 +604,7 @@ function drawLine() {
     if (lo > yMin && lo < yMax) {
       ctx.strokeStyle = css("--grid"); ctx.beginPath(); ctx.moveTo(L, Math.round(Y(lo)) + .5); ctx.lineTo(L + pw, Math.round(Y(lo)) + .5); ctx.stroke();
     }
-    ctx.fillStyle = i === target ? css("--accent") : css("--text-3");
+    ctx.fillStyle = i === target ? css("--tz") : css("--text-3");
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.font = (i === target ? "600 " : "") + "12px system-ui, sans-serif";
     ctx.fillText("Z" + (i + 1), L + pw + 6, (Y(a) + Y(b)) / 2);
@@ -607,8 +612,9 @@ function drawLine() {
   ctx.font = "12px system-ui, sans-serif";
   // target band
   const by1 = Y(Math.min(tHi + 1, yMax)), by2 = Y(Math.max(tLo, yMin));
-  ctx.fillStyle = css("--band"); ctx.fillRect(L, by1, pw, by2 - by1);
-  ctx.strokeStyle = css("--band-edge"); ctx.setLineDash([4, 4]);
+  const tzr = css("--z" + (target + 1) + "-rgb");
+  ctx.fillStyle = `rgba(${tzr}, 0.16)`; ctx.fillRect(L, by1, pw, by2 - by1);
+  ctx.strokeStyle = `rgba(${tzr}, 0.6)`; ctx.setLineDash([4, 4]);
   ctx.beginPath(); ctx.moveTo(L, by1); ctx.lineTo(L + pw, by1); ctx.moveTo(L, by2); ctx.lineTo(L + pw, by2); ctx.stroke();
   ctx.setLineDash([]);
   // y axis labels
@@ -626,18 +632,22 @@ function drawLine() {
   if (!pts.length) return;
   // HR line
   ctx.save(); ctx.beginPath(); ctx.rect(L, T, pw, ph); ctx.clip();
-  ctx.strokeStyle = css("--line"); ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
-  ctx.beginPath();
-  let prev = null;
-  for (let i = 0; i < pts.length; i += step) {
-    const s = pts[i];
-    if (prev && s.t - prev.t > 10) ctx.moveTo(X(s.t), Y(s.hr)); else ctx.lineTo(X(s.t), Y(s.hr));
+  ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  const zc = [1, 2, 3, 4, 5].map(i => css("--z" + i)); zc[5] = zc[0];
+  const idx = []; for (let i = 0; i < pts.length; i += step) idx.push(i);
+  if (idx[idx.length - 1] !== pts.length - 1) idx.push(pts.length - 1);
+  let run = null, prev = null;
+  for (const i of idx) {
+    const s = pts[i], z = zoneOf(s.hr);
+    if (prev && s.t - prev.t <= 10) {
+      if (run !== z) { if (run !== null) ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = zc[z]; ctx.moveTo(X(prev.t), Y(prev.hr)); run = z; }
+      ctx.lineTo(X(s.t), Y(s.hr));
+    } else { if (run !== null) ctx.stroke(); run = null; }
     prev = s;
   }
-  const last = pts[pts.length - 1];
-  ctx.lineTo(X(last.t), Y(last.hr));
-  ctx.stroke();
+  if (run !== null) ctx.stroke();
   ctx.restore();
+  const last = pts[pts.length - 1];
   // live end marker
   ctx.fillStyle = css("--line"); ctx.strokeStyle = css("--surface"); ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(X(last.t), Y(last.hr), 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
