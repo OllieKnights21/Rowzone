@@ -52,7 +52,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {
-  background: var(--bg); color: var(--text);
+  background: var(--surface); color: var(--text);
   font: 14px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
   display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden;
@@ -67,12 +67,12 @@ button:hover { border-color: var(--text-3); }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .spacer { flex: 1; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.card { background: transparent; border: 0; border-radius: 0; padding: 6px 10px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex: none; }
 .card-head h2 { white-space: nowrap; font-size: 12px; margin: 0; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; }
 
 /* main: three panels filling the screen */
-.app { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.55fr) minmax(0, 0.9fr); gap: 8px; padding: 8px 8px 0; }
+.app { flex: 1; min-height: 0; display: grid; background: var(--surface); grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.55fr) minmax(0, 0.9fr); gap: 8px; padding: 8px 8px 0; }
 
 /* gauge panel */
 .gauge-card { align-items: stretch; }
@@ -88,14 +88,14 @@ button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0
 .zone-pill.in { border-color: var(--tz); color: var(--tz); }
 .zone-pill.hi, .zone-pill.lo { border-color: var(--warn); color: var(--warn); }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; flex: none; }
-.stat { background: var(--surface-2); border-radius: 8px; padding: 4px 8px; min-width: 0; }
+.stat { background: transparent; padding: 2px 4px; min-width: 0; text-align: center; }
 .stat .label { font-size: 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat .value { font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.15; }
 .stat .sub { font-size: 11px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* chart panel */
-.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
-.seg button { border: 0; border-radius: 0; padding: 2px 8px; font-size: 12px; background: transparent; }
+.seg { display: inline-flex; border: 0; border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-radius: 6px; padding: 2px 8px; font-size: 12px; background: transparent; color: var(--text-3); }
 .seg button[aria-pressed="true"] { background: var(--surface-2); box-shadow: none; color: var(--text); font-weight: 600; }
 .chart-box { position: relative; flex: 1; min-height: 0; }
 canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -131,9 +131,7 @@ body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-in
 body[data-state="hi"]::after { animation: nag 1.2s ease-in-out infinite; }
 @keyframes nag { 50% { box-shadow: inset 0 0 0 5px var(--glow), inset 0 0 120px var(--glow-soft); } }
 .gauge-card { transition: background-color .8s ease; }
-@supports (background: color-mix(in srgb, red, blue)) {
-  .gauge-card { background: color-mix(in srgb, var(--surface) 86%, var(--glow-soft)); }
-}
+
 /* heartbeat pulse ring on the gauge marker */
 #gPulse { transform-box: fill-box; transform-origin: center; animation: beat 0.5s ease-out infinite; }
 @keyframes beat { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(2.3); opacity: 0; } }
@@ -144,7 +142,7 @@ body:not([data-state]) #gPulse, body[data-state=""] #gPulse { display: none; }
 .goal.done .goal-fill { background: var(--tz); }
 .goal span { position: relative; display: block; text-align: center; font-size: 11px; line-height: 18px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
 .stat.streak .value { color: var(--text); }
-body[data-state="in"] .stat.streak { box-shadow: inset 0 0 0 1px var(--tz); }
+body[data-state="in"] .stat.streak .value { color: var(--tz); }
 /* celebration toast + confetti */
 .toast { position: fixed; left: 50%; top: 22%; transform: translate(-50%, -50%) scale(.6); z-index: 60; pointer-events: none;
   background: var(--surface); border: 2px solid var(--tz); color: var(--text); border-radius: 16px; padding: 10px 22px;
@@ -157,13 +155,16 @@ body[data-state="in"] .stat.streak { box-shadow: inset 0 0 0 1px var(--tz); }
 @media (prefers-reduced-motion: reduce) { body::after, #gPulse, .confetti { animation: none !important; } }
 
 /* bottom bar: connection + settings */
+.bar button:not(.primary), .bar select { background: transparent; border-color: transparent; color: var(--text-2); }
+.bar button:not(.primary):hover, .bar select:hover { color: var(--text); border-color: transparent; }
+.bar button[aria-pressed="true"]:not(.primary) { color: var(--text); box-shadow: none; border-color: transparent; background: var(--surface-2); }
 .bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 8px; overflow-x: auto; scrollbar-width: none; }
 .bar::-webkit-scrollbar { display: none; }
 .bar .status { font-size: 12px; color: var(--text-2); white-space: nowrap; margin-right: 4px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); margin-right: 5px; vertical-align: 0; }
 .dot.on { background: #3fb950; }
 .bar select { padding: 5px 6px; }
-.nobt { flex: none; font-size: 12px; color: var(--text); background: var(--surface); border-top: 1px solid var(--warn); padding: 4px 10px; }
+.nobt { flex: none; font-size: 12px; color: var(--text-2); background: transparent; padding: 2px 12px; }
 .nobt b { color: var(--warn); }
 
 /* zone settings dialog */
